@@ -2,12 +2,13 @@ package application
 
 import (
 	"errors"
+
 	"github.com/asaskevich/govalidator"
 	uuid "github.com/satori/go.uuid"
 )
 
 func init() {
-	govalidator.SetfieldsRequiredByDefault(true)
+	govalidator.SetFieldsRequiredByDefault(true)
 }
 
 type ProductInterface interface {
@@ -20,33 +21,61 @@ type ProductInterface interface {
 	GetPrice() float64
 }
 
+type ProductServiceInterface interface {
+	Get(id string) (ProductInterface, error)
+	Create(name string, price float64) (ProductInterface, error)
+	Enable(product ProductInterface) (ProductInterface, error)
+	Disable(product ProductInterface) (ProductInterface, error)
+}
+
+type ProductReader interface {
+	Get(id string) (ProductInterface, error)
+}
+
+type ProductWriter interface {
+	Save(product ProductInterface) (ProductInterface, error)
+}
+
+type ProductPersistenceInterface interface {
+	ProductReader
+	ProductWriter
+}
+
 const (
 	DISABLED = "disabled"
 	ENABLED  = "anabled"
 )
 
 type Product struct {
-	ID     string `valid:"uuiv4"`
-	Name   string `valid:"required"`
+	ID     string  `valid:"uuidv4"`
+	Name   string  `valid:"required"`
 	Price  float64 `valid:"float,optional"`
-	Status string `valid:"required"`
+	Status string  `valid:"required"`
+}
+
+func NewProduct() *Product {
+	product := Product{
+		ID:     uuid.NewV4().String(),
+		Status: DISABLED,
+	}
+	return &product
 }
 
 func (p *Product) IsValid() (bool, error) {
-	if p.Status == ""{
+	if p.Status == "" {
 		p.Status = DISABLED
 	}
 
 	if p.Status != ENABLED && p.Status != DISABLED {
-		return false, erros.New("the status must be enabled ou disabled")
+		return false, errors.New("the status must be enabled or disabled")
 	}
 
 	if p.Price < 0 {
-		return false, erros.New("the price must be greater or equal zero")
+		return false, errors.New("the price must be greater or equal zero")
 	}
 
 	_, err := govalidator.ValidateStruct(p)
-	if err != nil{
+	if err != nil {
 		return false, err
 	}
 	return true, nil
